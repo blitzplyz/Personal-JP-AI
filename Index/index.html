@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Hayai">
+<meta name="theme-color" content="#0f0f0f">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Hayai — Japanese Immersion</title>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --bg2: #1a1a1a;
+    --bg3: #242424;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.15);
+    --text: #f0f0f0;
+    --text2: #999;
+    --text3: #555;
+    --accent: #e8c468;
+    --accent2: #c4a44e;
+    --red: #e85555;
+    --green: #55c47a;
+    --blue: #5599e8;
+    --r: 12px;
+    --font: 'Zen Kaku Gothic New', sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); overflow: hidden; max-width: 100vw; }
+  * { max-width: 100%; }
+
+  /* Nav */
+  #nav { display: flex; justify-content: space-around; align-items: center; position: fixed; bottom: 0; left: 0; right: 0; height: 64px; background: var(--bg2); border-top: 0.5px solid var(--border); z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
+  .nav-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: none; color: var(--text3); cursor: pointer; padding: 8px 16px; transition: color 0.2s; font-family: var(--font); }
+  .nav-btn.active { color: var(--accent); }
+  .nav-btn svg { width: 22px; height: 22px; }
+  .nav-btn span { font-size: 10px; letter-spacing: 0.05em; }
+
+  /* Pages */
+  .page { position: fixed; inset: 0; bottom: 64px; overflow-y: auto; overflow-x: hidden; display: none; flex-direction: column; }
+  .page.active { display: flex; }
+
+  /* ── PLAYER PAGE ── */
+  #page-player { background: var(--bg); display: block; overflow-y: auto; overflow-x: hidden; }
+  #yt-container { position: relative; width: 100%; aspect-ratio: 16/9; background: #000; }
+  #yt-container iframe { width: 100%; height: 100%; border: none; }
+  #url-bar { display: flex; gap: 8px; padding: 12px 16px; background: var(--bg2); border-bottom: 0.5px solid var(--border); overflow: hidden; }
+  #url-input { flex: 1; min-width: 0; background: var(--bg3); border: 0.5px solid var(--border2); border-radius: 8px; color: var(--text); font-family: var(--font); font-size: 13px; padding: 8px 12px; outline: none; }
+  #url-input::placeholder { color: var(--text3); }
+  #load-btn { background: var(--accent); color: #000; border: none; border-radius: 8px; padding: 8px 16px; font-family: var(--font); font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+
+  #subtitle-area { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .subtitle-label { font-size: 11px; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; }
+  #subtitle-display { font-size: 22px; line-height: 1.6; letter-spacing: 0.02em; min-height: 60px; }
+  .jp-word { cursor: pointer; border-bottom: 1.5px solid transparent; transition: border-color 0.15s, color 0.15s; display: inline; }
+  .jp-word:hover, .jp-word.selected { color: var(--accent); border-color: var(--accent); }
+  #translation-display { font-size: 15px; color: var(--text2); line-height: 1.5; min-height: 40px; }
+
+  /* AI Panel */
+  #ai-panel { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--r); padding: 16px; margin: 0 16px 16px; overflow: hidden; word-break: break-word; }
+  #ai-panel h3 { font-size: 12px; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 10px; }
+  #ai-result { font-size: 14px; line-height: 1.7; color: var(--text2); }
+  #ai-result.loading { color: var(--text3); font-style: italic; }
+  #ai-result strong { color: var(--text); font-weight: 500; }
+  #ai-result .kana { font-size: 12px; color: var(--accent); font-family: var(--mono); }
+  #save-btn { margin-top: 12px; width: 100%; background: none; border: 0.5px solid var(--border2); border-radius: 8px; color: var(--text2); font-family: var(--font); font-size: 13px; padding: 8px; cursor: pointer; transition: background 0.15s, color 0.15s; display: none; }
+  #save-btn:hover { background: var(--bg3); color: var(--text); }
+  #save-btn.visible { display: block; }
+
+  /* Manual subtitle input */
+  #manual-sub { display: flex; gap: 8px; padding: 0 16px 16px; overflow: hidden; }
+  #sub-input { flex: 1; min-width: 0; background: var(--bg3); border: 0.5px solid var(--border2); border-radius: 8px; color: var(--text); font-family: var(--font); font-size: 15px; padding: 10px 12px; outline: none; }
+  #sub-input::placeholder { color: var(--text3); }
+  #analyze-btn { background: none; border: 0.5px solid var(--border2); border-radius: 8px; color: var(--accent); font-family: var(--font); font-size: 13px; padding: 10px 14px; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+
+  /* ── SRS PAGE ── */
+  #page-srs { background: var(--bg); align-items: center; justify-content: center; padding: 24px; }
+  #srs-header { width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  #srs-header h2 { font-size: 18px; font-weight: 500; }
+  #srs-count { font-size: 13px; color: var(--text2); font-family: var(--mono); }
+  #card-container { width: 100%; max-width: 400px; }
+  #flashcard { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 20px; padding: 40px 24px; text-align: center; min-height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; cursor: pointer; transition: transform 0.1s; position: relative; overflow: hidden; }
+  #flashcard:active { transform: scale(0.98); }
+  #card-front { font-size: 48px; letter-spacing: 0.05em; }
+  #card-reading { font-size: 14px; color: var(--accent); font-family: var(--mono); display: none; }
+  #card-meaning { font-size: 18px; color: var(--text2); display: none; margin-top: 8px; }
+  #card-context { font-size: 13px; color: var(--text3); display: none; margin-top: 4px; font-style: italic; }
+  #card-tap-hint { font-size: 11px; color: var(--text3); position: absolute; bottom: 14px; }
+  #srs-actions { display: flex; gap: 12px; margin-top: 20px; width: 100%; }
+  .srs-btn { flex: 1; padding: 14px; border: none; border-radius: var(--r); font-family: var(--font); font-size: 14px; font-weight: 500; cursor: pointer; display: none; }
+  #btn-again { background: rgba(232,85,85,0.15); color: var(--red); }
+  #btn-hard { background: rgba(85,153,232,0.15); color: var(--blue); }
+  #btn-good { background: rgba(85,196,122,0.15); color: var(--green); }
+  #srs-empty { text-align: center; color: var(--text3); display: none; }
+  #srs-empty h3 { font-size: 18px; margin-bottom: 8px; color: var(--text2); }
+  #srs-empty p { font-size: 14px; }
+
+  /* ── VOCAB PAGE ── */
+  #page-vocab { background: var(--bg); padding: 20px 16px; }
+  #vocab-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  #vocab-header h2 { font-size: 18px; font-weight: 500; }
+  #vocab-stats { display: flex; gap: 8px; }
+  .v-stat { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 8px; padding: 4px 10px; font-size: 12px; font-family: var(--mono); color: var(--text2); }
+  #vocab-search { width: 100%; background: var(--bg3); border: 0.5px solid var(--border2); border-radius: 8px; color: var(--text); font-family: var(--font); font-size: 14px; padding: 10px 12px; outline: none; margin-bottom: 12px; }
+  #vocab-search::placeholder { color: var(--text3); }
+  #vocab-list { display: flex; flex-direction: column; gap: 8px; }
+  .vocab-item { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--r); padding: 14px 16px; display: flex; justify-content: space-between; align-items: flex-start; overflow: hidden; }
+  .vocab-item-left { min-width: 0; flex: 1; margin-right: 8px; }
+  .vocab-item-left .word { font-size: 20px; margin-bottom: 2px; }
+  .vocab-item-left .reading { font-size: 12px; color: var(--accent); font-family: var(--mono); word-break: break-all; overflow-wrap: break-word; overflow: hidden; }
+  .vocab-item-right { text-align: right; }
+  .vocab-item-right .meaning { font-size: 14px; color: var(--text2); }
+  .vocab-item-right .level { font-size: 11px; margin-top: 4px; }
+  .level-new { color: var(--blue); }
+  .level-learning { color: var(--accent); }
+  .level-known { color: var(--green); }
+  #vocab-empty { text-align: center; color: var(--text3); padding: 60px 20px; display: none; }
+  #vocab-empty p { font-size: 15px; }
+  #vocab-select-bar { display: none; gap: 8px; margin-bottom: 12px; }
+  #vocab-select-bar.active { display: flex; }
+  #btn-delete-selected { flex: 1; background: rgba(232,85,85,0.15); color: var(--red); border: 0.5px solid rgba(232,85,85,0.3); border-radius: 8px; font-family: var(--font); font-size: 13px; padding: 9px; cursor: pointer; }
+  #btn-cancel-select { background: none; border: 0.5px solid var(--border2); border-radius: 8px; color: var(--text2); font-family: var(--font); font-size: 13px; padding: 9px 14px; cursor: pointer; }
+  #btn-clear-all { background: none; border: none; color: var(--red); font-family: var(--font); font-size: 12px; cursor: pointer; opacity: 0.7; }
+  .vocab-item { transition: background 0.15s; }
+  .vocab-item.selected { background: rgba(232,85,85,0.08); border-color: rgba(232,85,85,0.3); }
+  .vocab-checkbox { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--border2); flex-shrink: 0; margin-right: 10px; display: none; align-items: center; justify-content: center; transition: background 0.15s, border-color 0.15s; }
+  .select-mode .vocab-checkbox { display: flex; }
+  .vocab-checkbox.checked { background: var(--red); border-color: var(--red); }
+  .vocab-checkbox.checked::after { content: ''; display: block; width: 5px; height: 9px; border: 2px solid #fff; border-top: none; border-left: none; transform: rotate(45deg) translate(-1px, -1px); }
+
+  /* ── DICT PAGE ── */
+  #page-dict { background: var(--bg); padding: 20px 16px; }
+  #dict-header { margin-bottom: 16px; }
+  #dict-header h2 { font-size: 18px; font-weight: 500; margin-bottom: 12px; }
+  #dict-search-row { display: flex; gap: 8px; overflow: hidden; }
+  #dict-input { flex: 1; min-width: 0; background: var(--bg3); border: 0.5px solid var(--border2); border-radius: 8px; color: var(--text); font-family: var(--font); font-size: 16px; padding: 10px 12px; outline: none; }
+  #dict-input::placeholder { color: var(--text3); }
+  #dict-search-btn { background: var(--accent); color: #000; border: none; border-radius: 8px; padding: 10px 16px; font-family: var(--font); font-size: 13px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
+  #dict-result { margin-top: 16px; }
+  .dict-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--r); padding: 20px; overflow: hidden; }
+  .dict-word { font-size: 36px; margin-bottom: 4px; }
+  .dict-reading { font-size: 14px; color: var(--accent); font-family: var(--mono); margin-bottom: 16px; word-break: break-all; overflow-wrap: break-word; }
+  .dict-section { margin-bottom: 14px; }
+  .dict-section-label { font-size: 11px; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+  .dict-section-body { font-size: 15px; color: var(--text2); line-height: 1.6; }
+  .dict-save { margin-top: 16px; width: 100%; background: none; border: 0.5px solid var(--border2); border-radius: 8px; color: var(--accent); font-family: var(--font); font-size: 14px; padding: 10px; cursor: pointer; }
+  #dict-loading { text-align: center; color: var(--text3); padding: 40px; font-style: italic; display: none; }
+
+  /* Settings overlay */
+  #settings-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 200; align-items: flex-end; }
+  #settings-overlay.open { display: flex; }
+  #settings-panel { background: var(--bg2); border-radius: 20px 20px 0 0; padding: 24px; width: 100%; }
+  #settings-panel h3 { font-size: 16px; font-weight: 500; margin-bottom: 20px; }
+  .setting-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  .setting-row label { font-size: 12px; color: var(--text3); letter-spacing: 0.06em; text-transform: uppercase; }
+  .setting-row input { background: var(--bg3); border: 0.5px solid var(--border2); border-radius: 8px; color: var(--text); font-family: var(--mono); font-size: 13px; padding: 10px 12px; outline: none; width: 100%; }
+  #settings-save { width: 100%; background: var(--accent); color: #000; border: none; border-radius: 10px; font-family: var(--font); font-size: 15px; font-weight: 700; padding: 14px; cursor: pointer; margin-top: 8px; }
+  #settings-close { width: 100%; background: none; border: 0.5px solid var(--border); border-radius: 10px; font-family: var(--font); font-size: 15px; color: var(--text2); padding: 12px; cursor: pointer; margin-top: 8px; }
+
+  /* Top bar */
+  #topbar { position: fixed; top: 0; left: 0; right: 0; height: 52px; background: var(--bg); border-bottom: 0.5px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 50; padding-top: env(safe-area-inset-top); }
+  #topbar h1 { font-size: 16px; font-weight: 700; letter-spacing: 0.05em; color: var(--accent); }
+  #settings-btn { background: none; border: none; color: var(--text2); cursor: pointer; padding: 6px; }
+  #settings-btn svg { width: 20px; height: 20px; }
+  .page { top: 52px; bottom: 64px; }
+
+  /* Toast */
+  #toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); background: var(--bg3); border: 0.5px solid var(--border2); border-radius: 20px; padding: 8px 16px; font-size: 13px; color: var(--text); z-index: 300; opacity: 0; transition: opacity 0.2s; pointer-events: none; white-space: nowrap; }
+  #toast.show { opacity: 1; }
+
+  ruby { display: inline-flex; flex-direction: column-reverse; align-items: center; line-height: 1; }
+  rt { font-size: 10px; color: var(--accent); font-family: var(--font); line-height: 1.2; }
+  scrollbar-width: thin;
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div id="topbar">
+  <h1>速い — HAYAI</h1>
+  <button id="settings-btn" onclick="openSettings()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+  </button>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- PLAYER PAGE -->
+<div id="page-player" class="page active">
+  <div id="url-bar">
+    <input id="url-input" type="text" placeholder="Paste YouTube URL..." />
+    <button id="load-btn" onclick="loadVideo()">Load</button>
+  </div>
+  <div id="yt-container">
+    <div id="yt-placeholder" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#333;font-size:14px;flex-direction:column;gap:8px;">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="#333"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
+      <span>Load a Japanese YouTube video</span>
+    </div>
+    <iframe id="yt-frame" style="display:none" allowfullscreen allow="autoplay"></iframe>
+  </div>
+
+  <div id="subtitle-area">
+    <div>
+      <div class="subtitle-label">Japanese</div>
+      <div id="subtitle-display" style="color:#555;font-size:16px;">Paste a subtitle or Japanese text below to analyze it ↓</div>
+    </div>
+    <div>
+      <div class="subtitle-label">Translation</div>
+      <div id="translation-display">—</div>
+    </div>
+  </div>
+
+  <div id="manual-sub">
+    <input id="sub-input" type="text" placeholder="Type or paste Japanese text..." />
+    <button id="analyze-btn" onclick="analyzeText()">Analyze</button>
+  </div>
+
+  <div id="ai-panel">
+    <h3>AI Explanation</h3>
+    <div id="ai-result">Tap a word or analyze text to get an explanation.</div>
+    <button id="save-btn" onclick="saveCurrentWord()">+ Save to vocab</button>
+  </div>
+</div>
+
+<!-- SRS PAGE -->
+<div id="page-srs" class="page">
+  <div id="srs-header">
+    <h2>Review</h2>
+    <span id="srs-count">0 cards</span>
+  </div>
+  <div id="card-container">
+    <div id="flashcard" onclick="flipCard()">
+      <div id="card-front">—</div>
+      <div id="card-reading"></div>
+      <div id="card-meaning"></div>
+      <div id="card-context"></div>
+      <div id="card-tap-hint">tap to reveal</div>
+    </div>
+    <div id="srs-actions">
+      <button class="srs-btn" id="btn-again" onclick="rateCard('again')">Again</button>
+      <button class="srs-btn" id="btn-hard" onclick="rateCard('hard')">Hard</button>
+      <button class="srs-btn" id="btn-good" onclick="rateCard('good')">Good</button>
+    </div>
+  </div>
+  <div id="srs-empty">
+    <h3>All caught up!</h3>
+    <p>Save words from the Player or Dictionary tab to start reviewing.</p>
+  </div>
+</div>
+
+<!-- VOCAB PAGE -->
+<div id="page-vocab" class="page">
+  <div id="vocab-header">
+    <h2>Vocabulary</h2>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button id="btn-clear-all" onclick="clearAllVocab()">Clear all</button>
+      <span class="v-stat" id="stat-total">0 words</span>
+      <button class="v-stat" onclick="toggleSelectMode()" id="btn-edit" style="background:none;border:0.5px solid var(--border);border-radius:8px;color:var(--text2);font-family:var(--font);font-size:12px;padding:4px 10px;cursor:pointer;">Select</button>
+    </div>
+  </div>
+  <div id="vocab-select-bar">
+    <button id="btn-delete-selected" onclick="deleteSelected()">Delete selected</button>
+    <button id="btn-cancel-select" onclick="toggleSelectMode()">Cancel</button>
+  </div>
+  <input id="vocab-search" type="text" placeholder="Search words..." oninput="renderVocab()" />
+  <div id="vocab-list"></div>
+  <div id="vocab-empty"><p>No saved words yet.<br>Start by analyzing text in the Player tab.</p></div>
+</div>
+
+<!-- DICT PAGE -->
+<div id="page-dict" class="page">
+  <div id="dict-header">
+    <h2>Dictionary</h2>
+    <div id="dict-search-row">
+      <input id="dict-input" type="text" placeholder="Search Japanese word..." />
+      <button id="dict-search-btn" onclick="searchDict()">Look up</button>
+    </div>
+  </div>
+  <div id="dict-loading">Looking up...</div>
+  <div id="dict-result"></div>
+</div>
+
+<!-- Settings Overlay -->
+<div id="settings-overlay">
+  <div id="settings-panel">
+    <h3>Settings</h3>
+    <div class="setting-row">
+      <label>Furigana (kana above kanji)</label>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
+        <div id="furigana-toggle" onclick="toggleFurigana()" style="width:48px;height:28px;border-radius:14px;background:var(--bg3);border:0.5px solid var(--border2);cursor:pointer;position:relative;transition:background 0.2s">
+          <div id="furigana-knob" style="position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:var(--text3);transition:left 0.2s,background 0.2s"></div>
+        </div>
+        <span id="furigana-label" style="font-size:13px;color:var(--text2)">Off</span>
+      </div>
+    </div>
+    <button id="settings-save" onclick="saveSettings()">Save</button>
+    <button id="settings-close" onclick="closeSettings()">Cancel</button>
+  </div>
+</div>
+
+<!-- Bottom Nav -->
+<nav id="nav">
+  <button class="nav-btn active" onclick="showPage('player', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="m10 8 6 4-6 4V8z" fill="currentColor" stroke="none"/></svg>
+    <span>Player</span>
+  </button>
+  <button class="nav-btn" onclick="showPage('srs', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M8 2v4M16 2v4M2 10h20"/></svg>
+    <span>Review</span>
+  </button>
+  <button class="nav-btn" onclick="showPage('vocab', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    <span>Vocab</span>
+  </button>
+  <button class="nav-btn" onclick="showPage('dict', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <span>Dictionary</span>
+  </button>
+</nav>
+
+<script>
+
+let ollamaUrl = localStorage.getItem('hayai_ollama_url') || 'https://untripped-otis-steelless.ngrok-free.dev';
+let vocab = JSON.parse(localStorage.getItem('hayai_vocab') || '[]');
+let srsQueue = [];
+let currentCard = null;
+let cardFlipped = false;
+let currentWordData = null;
+
+// ── NAVIGATION ──
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'srs') initSRS();
+  if (name === 'vocab') renderVocab();
+}
+
+// ── SETTINGS ──
+function openSettings() {
+  document.getElementById('settings-overlay').classList.add('open');
+  updateFuriganaUI();
+}
+function closeSettings() {
+  document.getElementById('settings-overlay').classList.remove('open');
+}
+function saveSettings() {
+  localStorage.setItem('hayai_furigana', furiganaEnabled);
+  closeSettings();
+  showToast('Settings saved!');
+}
+
+// ── TOAST ──
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ── YOUTUBE ──
+function loadVideo() {
+  const url = document.getElementById('url-input').value.trim();
+  const id = extractYTId(url);
+  if (!id) { showToast('Invalid YouTube URL'); return; }
+  const frame = document.getElementById('yt-frame');
+  document.getElementById('yt-placeholder').style.display = 'none';
+  frame.style.display = 'block';
+  frame.src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
+}
+function extractYTId(url) {
+  const m = url.match(/(?:youtu\.be\/|v=|\/v\/|embed\/)([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+// ── OLLAMA API ──
+async function callGemini(prompt) {
+  const res = await fetch(`${ollamaUrl}/api/generate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/plain',
+      'ngrok-skip-browser-warning': '1'
+    },
+    body: JSON.stringify({ model: 'qwen2.5:3b', prompt, stream: false, options: { temperature: 0.3, num_predict: 600 } })
+  });
+  if (!res.ok) throw new Error('Ollama error: ' + res.status + '. Is ngrok running?');
+  const data = await res.json();
+  return data.response || '';
+}
+
+// ── ANALYZE TEXT ──
+async function analyzeText() {
+  const text = document.getElementById('sub-input').value.trim();
+  if (!text) return;
+
+  document.getElementById('subtitle-display').innerHTML = tokenizeJapanese(furiganaEnabled ? addFurigana(text) : text);
+  document.getElementById('translation-display').textContent = 'Translating...';
+  document.getElementById('ai-result').textContent = 'Analyzing...';
+  document.getElementById('ai-result').className = 'loading';
+  document.getElementById('save-btn').classList.remove('visible');
+
+  const prompt = `You are a Japanese language teacher. Analyze this Japanese text for a learner.
+
+Text: "${text}"
+
+Respond in this exact format:
+TRANSLATION: [natural English translation]
+BREAKDOWN: [explain key words/grammar points, one per line with • bullet]
+GRAMMAR: [explain the main grammar pattern used]
+LEVEL: [JLPT level estimate: N5/N4/N3/N2/N1]`;
+
+  try {
+    const result = await callGemini(prompt);
+    const lines = result.split('\n');
+    let translation = '', breakdown = '', grammar = '', level = '';
+    lines.forEach(l => {
+      if (l.startsWith('TRANSLATION:')) translation = l.replace('TRANSLATION:', '').trim();
+      else if (l.startsWith('BREAKDOWN:')) breakdown = l.replace('BREAKDOWN:', '').trim();
+      else if (l.startsWith('GRAMMAR:')) grammar = l.replace('GRAMMAR:', '').trim();
+      else if (l.startsWith('LEVEL:')) level = l.replace('LEVEL:', '').trim();
+      else if (breakdown !== undefined && l.trim().startsWith('•')) breakdown += '\n' + l;
+    });
+
+    document.getElementById('translation-display').textContent = translation || '—';
+    document.getElementById('ai-result').className = '';
+    document.getElementById('ai-result').innerHTML = `
+      ${breakdown ? `<div style="margin-bottom:10px">${breakdown.replace(/\n/g,'<br>')}</div>` : ''}
+      ${grammar ? `<div style="margin-bottom:6px"><strong>Grammar:</strong> ${grammar}</div>` : ''}
+      ${level ? `<div><strong>Level:</strong> <span class="kana">${level}</span></div>` : ''}
+    `;
+    currentWordData = { word: text, reading: '', meaning: translation, context: text };
+    document.getElementById('save-btn').classList.add('visible');
+    document.getElementById('save-btn').textContent = '+ Save to vocab';
+  } catch(e) {
+    document.getElementById('ai-result').textContent = 'Error: ' + e.message;
+    document.getElementById('translation-display').textContent = '—';
+  }
+}
+
+// ── WORD CLICK ──
+async function lookupWord(word) {
+  document.querySelectorAll('.jp-word').forEach(w => w.classList.remove('selected'));
+  event.target.classList.add('selected');
+  document.getElementById('ai-result').textContent = `Looking up ${word}...`;
+  document.getElementById('ai-result').className = 'loading';
+  document.getElementById('save-btn').classList.remove('visible');
+
+  const prompt = `You are a Japanese dictionary. Look up this word/character: "${word}"
+
+Respond in this exact format:
+READING: [hiragana reading only, e.g. たべる — must be actual hiragana/katakana, not romanization]
+MEANING: [English meaning, concise]
+USAGE: [one example sentence in Japanese with English translation]
+NOTES: [any important usage notes or nuances, keep brief]`;
+
+  try {
+    const result = await callGemini(prompt);
+    const lines = result.split('\n');
+    let reading = '', meaning = '', usage = '', notes = '';
+    lines.forEach(l => {
+      if (l.startsWith('READING:')) reading = l.replace('READING:', '').trim();
+      else if (l.startsWith('MEANING:')) meaning = l.replace('MEANING:', '').trim();
+      else if (l.startsWith('USAGE:')) usage = l.replace('USAGE:', '').trim();
+      else if (l.startsWith('NOTES:')) notes = l.replace('NOTES:', '').trim();
+    });
+    document.getElementById('ai-result').className = '';
+    document.getElementById('ai-result').innerHTML = `
+      <div style="margin-bottom:8px"><strong style="font-size:20px">${word}</strong> <span class="kana">${reading}</span></div>
+      <div style="margin-bottom:8px">${meaning}</div>
+      ${usage ? `<div style="margin-bottom:6px;color:#666;font-size:13px;font-style:italic">${usage}</div>` : ''}
+      ${notes ? `<div style="font-size:13px;color:#666">${notes}</div>` : ''}
+    `;
+    currentWordData = { word, reading, meaning, context: document.getElementById('sub-input').value };
+    document.getElementById('save-btn').classList.add('visible');
+    document.getElementById('save-btn').textContent = `+ Save "${word}" to vocab`;
+  } catch(e) {
+    document.getElementById('ai-result').textContent = 'Error: ' + e.message;
+  }
+}
+
+// ── TOKENIZE ──
+function tokenizeJapanese(text) {
+  // Simple tokenization: split on CJK character boundaries
+  return text.split('').map(c => {
+    if (/[\u3000-\u9fff\uF900-\uFAFF]/.test(c)) {
+      return `<span class="jp-word" onclick="lookupWord('${c}')">${c}</span>`;
+    }
+    return c;
+  }).join('');
+}
+
+// ── SAVE VOCAB ──
+function saveCurrentWord() {
+  if (!currentWordData) return;
+  const existing = vocab.find(v => v.word === currentWordData.word);
+  if (existing) { showToast('Already saved!'); return; }
+  vocab.push({
+    ...currentWordData,
+    id: Date.now(),
+    level: 'new',
+    nextReview: Date.now(),
+    interval: 0,
+    reps: 0
+  });
+  localStorage.setItem('hayai_vocab', JSON.stringify(vocab));
+  showToast(`Saved "${currentWordData.word}"!`);
+  document.getElementById('save-btn').textContent = '✓ Saved!';
+}
+
+// ── SRS ──
+function initSRS() {
+  const due = vocab.filter(v => v.nextReview <= Date.now());
+  srsQueue = [...due].sort(() => Math.random() - 0.5);
+  document.getElementById('srs-count').textContent = `${srsQueue.length} due`;
+  if (srsQueue.length === 0) {
+    document.getElementById('flashcard').style.display = 'none';
+    document.getElementById('srs-actions').style.display = 'none';
+    document.getElementById('srs-empty').style.display = 'block';
+  } else {
+    document.getElementById('flashcard').style.display = 'flex';
+    document.getElementById('srs-empty').style.display = 'none';
+    showCard(srsQueue[0]);
+  }
+}
+
+function showCard(card) {
+  currentCard = card;
+  cardFlipped = false;
+  document.getElementById('card-front').textContent = card.word;
+  document.getElementById('card-reading').style.display = 'none';
+  document.getElementById('card-meaning').style.display = 'none';
+  document.getElementById('card-context').style.display = 'none';
+  document.getElementById('card-tap-hint').style.display = 'block';
+  document.querySelectorAll('.srs-btn').forEach(b => b.style.display = 'none');
+}
+
+function flipCard() {
+  if (cardFlipped || !currentCard) return;
+  cardFlipped = true;
+  document.getElementById('card-reading').textContent = currentCard.reading || '';
+  document.getElementById('card-reading').style.display = currentCard.reading ? 'block' : 'none';
+  document.getElementById('card-meaning').textContent = currentCard.meaning || '';
+  document.getElementById('card-meaning').style.display = 'block';
+  if (currentCard.context && currentCard.context !== currentCard.word) {
+    document.getElementById('card-context').textContent = currentCard.context;
+    document.getElementById('card-context').style.display = 'block';
+  }
+  document.getElementById('card-tap-hint').style.display = 'none';
+  document.querySelectorAll('.srs-btn').forEach(b => b.style.display = 'block');
+}
+
+function rateCard(rating) {
+  if (!currentCard) return;
+  const idx = vocab.findIndex(v => v.id === currentCard.id);
+  if (idx === -1) return;
+  const card = vocab[idx];
+  if (rating === 'again') { card.interval = 0; card.nextReview = Date.now(); card.level = 'new'; }
+  else if (rating === 'hard') { card.interval = Math.max(1, card.interval); card.nextReview = Date.now() + card.interval * 60000 * 10; card.level = 'learning'; }
+  else { card.interval = card.interval < 1 ? 1 : card.interval * 2.5; card.nextReview = Date.now() + card.interval * 60000 * 60 * 24; card.reps++; card.level = card.reps >= 3 ? 'known' : 'learning'; }
+  localStorage.setItem('hayai_vocab', JSON.stringify(vocab));
+  srsQueue.shift();
+  document.getElementById('srs-count').textContent = `${srsQueue.length} due`;
+  if (srsQueue.length === 0) {
+    document.getElementById('flashcard').style.display = 'none';
+    document.getElementById('srs-actions').style.display = 'none';
+    document.getElementById('srs-empty').style.display = 'block';
+  } else { showCard(srsQueue[0]); }
+}
+
+// ── VOCAB ──
+let selectMode = false;
+let selectedIds = new Set();
+
+function toggleSelectMode() {
+  selectMode = !selectMode;
+  selectedIds.clear();
+  document.getElementById('vocab-select-bar').classList.toggle('active', selectMode);
+  document.getElementById('vocab-list').classList.toggle('select-mode', selectMode);
+  renderVocab();
+}
+
+function toggleSelectItem(id) {
+  if (selectedIds.has(id)) selectedIds.delete(id);
+  else selectedIds.add(id);
+  document.getElementById('btn-delete-selected').textContent = `Delete selected (${selectedIds.size})`;
+  renderVocab();
+}
+
+function deleteSelected() {
+  if (selectedIds.size === 0) { showToast('Nothing selected'); return; }
+  if (!confirm(`Delete ${selectedIds.size} word(s)?`)) return;
+  vocab = vocab.filter(v => !selectedIds.has(v.id));
+  localStorage.setItem('hayai_vocab', JSON.stringify(vocab));
+  selectedIds.clear();
+  toggleSelectMode();
+  showToast('Deleted!');
+}
+
+function clearAllVocab() {
+  if (vocab.length === 0) { showToast('No words to clear'); return; }
+  if (!confirm('Clear all ' + vocab.length + ' words?')) return;
+  vocab = [];
+  localStorage.setItem('hayai_vocab', JSON.stringify(vocab));
+  renderVocab();
+  showToast('Cleared!');
+}
+
+function renderVocab() {
+  const q = document.getElementById('vocab-search').value.toLowerCase();
+  const filtered = vocab.filter(v => !q || v.word.includes(q) || v.meaning?.toLowerCase().includes(q));
+  document.getElementById('stat-total').textContent = vocab.length + ' words';
+  const list = document.getElementById('vocab-list');
+  const empty = document.getElementById('vocab-empty');
+  if (filtered.length === 0) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  list.innerHTML = filtered.map(v => `
+    <div class="vocab-item ${selectedIds.has(v.id) ? 'selected' : ''}" onclick="${selectMode ? `toggleSelectItem(${v.id})` : ''}">
+      <div class="vocab-checkbox ${selectedIds.has(v.id) ? 'checked' : ''}"></div>
+      <div class="vocab-item-left">
+        <div class="word">${v.word}</div>
+        ${v.reading ? `<div class="reading">${v.reading}</div>` : ''}
+      </div>
+      <div class="vocab-item-right">
+        <div class="meaning">${v.meaning || '—'}</div>
+        <div class="level level-${v.level || 'new'}">${v.level || 'new'}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── DICTIONARY ──
+async function searchDict() {
+  const word = document.getElementById('dict-input').value.trim();
+  if (!word) return;
+  document.getElementById('dict-loading').style.display = 'block';
+  document.getElementById('dict-result').innerHTML = '';
+
+  // Check local dictionary first
+  const localResults = searchLocalDict(word);
+  if (localResults.length > 0) {
+    document.getElementById('dict-loading').style.display = 'none';
+    const e = localResults[0];
+    const others = localResults.slice(1);
+    document.getElementById('dict-result').innerHTML = `
+      <div class="dict-card">
+        <div style="display:inline-block;background:rgba(85,196,122,0.15);color:#55c47a;font-size:11px;border-radius:6px;padding:2px 8px;margin-bottom:12px;letter-spacing:0.05em">LOCAL DICT</div>
+        <div class="dict-word">${e.w}</div>
+        <div class="dict-reading">${e.r} · ${e.p}</div>
+        <div class="dict-section">
+          <div class="dict-section-label">Meaning</div>
+          <div class="dict-section-body">${e.m}</div>
+        </div>
+        ${others.length > 0 ? '<div class="dict-section"><div class="dict-section-label">Other matches</div><div class="dict-section-body" style="font-size:13px">' + others.map(o => o.w + ' (' + o.r + ') — ' + o.m).join('<br>') + '</div></div>' : ''}
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="dict-save" style="flex:1" onclick="saveFromDict(${JSON.stringify({word:e.w,reading:e.r,meaning:e.m}).replace(/"/g,'&quot;')})">+ Save to vocab</button>
+          <button class="dict-save" style="flex:1;color:var(--accent)" onclick="searchDictAI('${e.w.replace(/'/g,"\'")}')">AI details ↗</button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  const prompt = `You are a comprehensive Japanese dictionary. Look up: "${word}"
+
+Respond in this exact format:
+WORD: [the word in kanji/kana]
+READING: [hiragana reading only, actual kana characters not romanization]
+PART_OF_SPEECH: [noun/verb/adjective/etc]
+MEANINGS: [numbered list of meanings]
+EXAMPLE_JP: [example sentence in Japanese]
+EXAMPLE_EN: [English translation of example]
+NOTES: [any important grammar notes, politeness level, or nuances]
+JLPT: [N5/N4/N3/N2/N1 or Unknown]`;
+
+  try {
+    const result = await callGemini(prompt);
+    const get = (key) => { const m = result.match(new RegExp(key + ': (.+)')); return m ? m[1].trim() : ''; };
+    const dictWord = get('WORD') || word;
+    const reading = get('READING');
+    const pos = get('PART_OF_SPEECH');
+    const meanings = get('MEANINGS');
+    const exJP = get('EXAMPLE_JP');
+    const exEN = get('EXAMPLE_EN');
+    const notes = get('NOTES');
+    const jlpt = get('JLPT');
+
+    document.getElementById('dict-loading').style.display = 'none';
+    document.getElementById('dict-result').innerHTML = `
+      <div class="dict-card">
+        <div class="dict-word">${dictWord}</div>
+        <div class="dict-reading">${reading}${pos ? ' · ' + pos : ''}${jlpt ? ' · ' + jlpt : ''}</div>
+        <div class="dict-section">
+          <div class="dict-section-label">Meanings</div>
+          <div class="dict-section-body">${meanings}</div>
+        </div>
+        ${exJP ? `<div class="dict-section">
+          <div class="dict-section-label">Example</div>
+          <div class="dict-section-body">${exJP}<br><span style="color:#555;font-size:13px">${exEN}</span></div>
+        </div>` : ''}
+        ${notes ? `<div class="dict-section">
+          <div class="dict-section-label">Notes</div>
+          <div class="dict-section-body" style="font-size:13px">${notes}</div>
+        </div>` : ''}
+        <button class="dict-save" onclick="saveFromDict(${JSON.stringify({word: dictWord, reading, meaning: meanings.split('1.')[1]?.split('2.')[0]?.trim() || meanings}).replace(/"/g,'&quot;')})">+ Save to vocab</button>
+      </div>
+    `;
+  } catch(e) {
+    document.getElementById('dict-loading').style.display = 'none';
+    document.getElementById('dict-result').innerHTML = `<p style="color:#e85555;padding:20px">${e.message}</p>`;
+  }
+}
+
+async function searchDictAI(word) {
+  document.getElementById('dict-input').value = word;
+  document.getElementById('dict-loading').style.display = 'block';
+  document.getElementById('dict-result').innerHTML = '';
+  await searchDict();
+}
+
+function saveFromDict(data) {
+  const existing = vocab.find(v => v.word === data.word);
+  if (existing) { showToast('Already saved!'); return; }
+  vocab.push({ ...data, id: Date.now(), level: 'new', nextReview: Date.now(), interval: 0, reps: 0 });
+  localStorage.setItem('hayai_vocab', JSON.stringify(vocab));
+  showToast(`Saved "${data.word}"!`);
+}
+
+// ── DICT ENTER KEY ──
+document.getElementById('dict-input').addEventListener('keydown', e => { if (e.key === 'Enter') searchDict(); });
+document.getElementById('sub-input').addEventListener('keydown', e => { if (e.key === 'Enter') analyzeText(); });
+
+// ── INIT ──
+
+
+// ── LOCAL DICTIONARY ──
+const LOCAL_DICT = [{"w": "日本語", "r": "にほんご", "m": "Japanese language", "p": "noun"}, {"w": "英語", "r": "えいご", "m": "English language", "p": "noun"}, {"w": "先生", "r": "せんせい", "m": "teacher", "p": "noun"}, {"w": "学生", "r": "がくせい", "m": "student", "p": "noun"}, {"w": "友達", "r": "ともだち", "m": "friend", "p": "noun"}, {"w": "家族", "r": "かぞく", "m": "family", "p": "noun"}, {"w": "お母さん", "r": "おかあさん", "m": "mother", "p": "noun"}, {"w": "お父さん", "r": "おとうさん", "m": "father", "p": "noun"}, {"w": "お兄さん", "r": "おにいさん", "m": "older brother", "p": "noun"}, {"w": "お姉さん", "r": "おねえさん", "m": "older sister", "p": "noun"}, {"w": "弟", "r": "おとうと", "m": "younger brother", "p": "noun"}, {"w": "妹", "r": "いもうと", "m": "younger sister", "p": "noun"}, {"w": "水", "r": "みず", "m": "water", "p": "noun"}, {"w": "食べ物", "r": "たべもの", "m": "food", "p": "noun"}, {"w": "飲み物", "r": "のみもの", "m": "drink, beverage", "p": "noun"}, {"w": "ご飯", "r": "ごはん", "m": "rice, meal", "p": "noun"}, {"w": "パン", "r": "ぱん", "m": "bread", "p": "noun"}, {"w": "肉", "r": "にく", "m": "meat", "p": "noun"}, {"w": "魚", "r": "さかな", "m": "fish", "p": "noun"}, {"w": "野菜", "r": "やさい", "m": "vegetables", "p": "noun"}, {"w": "果物", "r": "くだもの", "m": "fruit", "p": "noun"}, {"w": "車", "r": "くるま", "m": "car", "p": "noun"}, {"w": "電車", "r": "でんしゃ", "m": "train", "p": "noun"}, {"w": "バス", "r": "ばす", "m": "bus", "p": "noun"}, {"w": "飛行機", "r": "ひこうき", "m": "airplane", "p": "noun"}, {"w": "学校", "r": "がっこう", "m": "school", "p": "noun"}, {"w": "病院", "r": "びょういん", "m": "hospital", "p": "noun"}, {"w": "銀行", "r": "ぎんこう", "m": "bank", "p": "noun"}, {"w": "駅", "r": "えき", "m": "train station", "p": "noun"}, {"w": "店", "r": "みせ", "m": "shop, store", "p": "noun"}, {"w": "会社", "r": "かいしゃ", "m": "company", "p": "noun"}, {"w": "家", "r": "いえ", "m": "house, home", "p": "noun"}, {"w": "部屋", "r": "へや", "m": "room", "p": "noun"}, {"w": "山", "r": "やま", "m": "mountain", "p": "noun"}, {"w": "川", "r": "かわ", "m": "river", "p": "noun"}, {"w": "海", "r": "うみ", "m": "sea, ocean", "p": "noun"}, {"w": "空", "r": "そら", "m": "sky", "p": "noun"}, {"w": "花", "r": "はな", "m": "flower", "p": "noun"}, {"w": "木", "r": "き", "m": "tree", "p": "noun"}, {"w": "犬", "r": "いぬ", "m": "dog", "p": "noun"}, {"w": "猫", "r": "ねこ", "m": "cat", "p": "noun"}, {"w": "本", "r": "ほん", "m": "book", "p": "noun"}, {"w": "新聞", "r": "しんぶん", "m": "newspaper", "p": "noun"}, {"w": "映画", "r": "えいが", "m": "movie", "p": "noun"}, {"w": "音楽", "r": "おんがく", "m": "music", "p": "noun"}, {"w": "写真", "r": "しゃしん", "m": "photograph", "p": "noun"}, {"w": "電話", "r": "でんわ", "m": "telephone", "p": "noun"}, {"w": "時間", "r": "じかん", "m": "time", "p": "noun"}, {"w": "今日", "r": "きょう", "m": "today", "p": "noun"}, {"w": "明日", "r": "あした", "m": "tomorrow", "p": "noun"}, {"w": "昨日", "r": "きのう", "m": "yesterday", "p": "noun"}, {"w": "今", "r": "いま", "m": "now", "p": "noun"}, {"w": "朝", "r": "あさ", "m": "morning", "p": "noun"}, {"w": "昼", "r": "ひる", "m": "daytime, noon", "p": "noun"}, {"w": "夜", "r": "よる", "m": "night", "p": "noun"}, {"w": "週", "r": "しゅう", "m": "week", "p": "noun"}, {"w": "月", "r": "つき", "m": "moon, month", "p": "noun"}, {"w": "年", "r": "とし", "m": "year", "p": "noun"}, {"w": "春", "r": "はる", "m": "spring", "p": "noun"}, {"w": "夏", "r": "なつ", "m": "summer", "p": "noun"}, {"w": "秋", "r": "あき", "m": "autumn, fall", "p": "noun"}, {"w": "冬", "r": "ふゆ", "m": "winter", "p": "noun"}, {"w": "天気", "r": "てんき", "m": "weather", "p": "noun"}, {"w": "雨", "r": "あめ", "m": "rain", "p": "noun"}, {"w": "雪", "r": "ゆき", "m": "snow", "p": "noun"}, {"w": "風", "r": "かぜ", "m": "wind", "p": "noun"}, {"w": "名前", "r": "なまえ", "m": "name", "p": "noun"}, {"w": "言葉", "r": "ことば", "m": "word, language", "p": "noun"}, {"w": "色", "r": "いろ", "m": "color", "p": "noun"}, {"w": "赤", "r": "あか", "m": "red", "p": "noun"}, {"w": "青", "r": "あお", "m": "blue", "p": "noun"}, {"w": "白", "r": "しろ", "m": "white", "p": "noun"}, {"w": "黒", "r": "くろ", "m": "black", "p": "noun"}, {"w": "黄色", "r": "きいろ", "m": "yellow", "p": "noun"}, {"w": "緑", "r": "みどり", "m": "green", "p": "noun"}, {"w": "食べる", "r": "たべる", "m": "to eat", "p": "verb (ichidan)"}, {"w": "飲む", "r": "のむ", "m": "to drink", "p": "verb (godan)"}, {"w": "見る", "r": "みる", "m": "to see, to watch", "p": "verb (ichidan)"}, {"w": "聞く", "r": "きく", "m": "to listen, to ask", "p": "verb (godan)"}, {"w": "話す", "r": "はなす", "m": "to speak, to talk", "p": "verb (godan)"}, {"w": "読む", "r": "よむ", "m": "to read", "p": "verb (godan)"}, {"w": "書く", "r": "かく", "m": "to write", "p": "verb (godan)"}, {"w": "行く", "r": "いく", "m": "to go", "p": "verb (godan)"}, {"w": "来る", "r": "くる", "m": "to come", "p": "verb (irregular)"}, {"w": "帰る", "r": "かえる", "m": "to return home", "p": "verb (godan)"}, {"w": "起きる", "r": "おきる", "m": "to wake up, to get up", "p": "verb (ichidan)"}, {"w": "寝る", "r": "ねる", "m": "to sleep, to go to bed", "p": "verb (ichidan)"}, {"w": "する", "r": "する", "m": "to do", "p": "verb (irregular)"}, {"w": "ある", "r": "ある", "m": "to exist (inanimate)", "p": "verb (godan)"}, {"w": "いる", "r": "いる", "m": "to exist (animate)", "p": "verb (ichidan)"}, {"w": "買う", "r": "かう", "m": "to buy", "p": "verb (godan)"}, {"w": "売る", "r": "うる", "m": "to sell", "p": "verb (godan)"}, {"w": "使う", "r": "つかう", "m": "to use", "p": "verb (godan)"}, {"w": "作る", "r": "つくる", "m": "to make, to create", "p": "verb (godan)"}, {"w": "開ける", "r": "あける", "m": "to open", "p": "verb (ichidan)"}, {"w": "閉める", "r": "しめる", "m": "to close", "p": "verb (ichidan)"}, {"w": "入る", "r": "はいる", "m": "to enter", "p": "verb (godan)"}, {"w": "出る", "r": "でる", "m": "to exit, to leave", "p": "verb (ichidan)"}, {"w": "乗る", "r": "のる", "m": "to ride, to board", "p": "verb (godan)"}, {"w": "降りる", "r": "おりる", "m": "to get off, to descend", "p": "verb (ichidan)"}, {"w": "待つ", "r": "まつ", "m": "to wait", "p": "verb (godan)"}, {"w": "会う", "r": "あう", "m": "to meet", "p": "verb (godan)"}, {"w": "知る", "r": "しる", "m": "to know", "p": "verb (godan)"}, {"w": "分かる", "r": "わかる", "m": "to understand", "p": "verb (godan)"}, {"w": "思う", "r": "おもう", "m": "to think", "p": "verb (godan)"}, {"w": "言う", "r": "いう", "m": "to say", "p": "verb (godan)"}, {"w": "聞こえる", "r": "きこえる", "m": "to be audible", "p": "verb (ichidan)"}, {"w": "見える", "r": "みえる", "m": "to be visible", "p": "verb (ichidan)"}, {"w": "始める", "r": "はじめる", "m": "to begin", "p": "verb (ichidan)"}, {"w": "終わる", "r": "おわる", "m": "to end, to finish", "p": "verb (godan)"}, {"w": "教える", "r": "おしえる", "m": "to teach, to tell", "p": "verb (ichidan)"}, {"w": "習う", "r": "ならう", "m": "to learn", "p": "verb (godan)"}, {"w": "働く", "r": "はたらく", "m": "to work", "p": "verb (godan)"}, {"w": "休む", "r": "やすむ", "m": "to rest, to be absent", "p": "verb (godan)"}, {"w": "遊ぶ", "r": "あそぶ", "m": "to play", "p": "verb (godan)"}, {"w": "大きい", "r": "おおきい", "m": "big, large", "p": "i-adjective"}, {"w": "小さい", "r": "ちいさい", "m": "small, little", "p": "i-adjective"}, {"w": "長い", "r": "ながい", "m": "long", "p": "i-adjective"}, {"w": "短い", "r": "みじかい", "m": "short", "p": "i-adjective"}, {"w": "高い", "r": "たかい", "m": "tall, expensive", "p": "i-adjective"}, {"w": "低い", "r": "ひくい", "m": "low, short (height)", "p": "i-adjective"}, {"w": "新しい", "r": "あたらしい", "m": "new", "p": "i-adjective"}, {"w": "古い", "r": "ふるい", "m": "old (thing)", "p": "i-adjective"}, {"w": "良い", "r": "よい", "m": "good", "p": "i-adjective"}, {"w": "悪い", "r": "わるい", "m": "bad", "p": "i-adjective"}, {"w": "難しい", "r": "むずかしい", "m": "difficult", "p": "i-adjective"}, {"w": "易しい", "r": "やさしい", "m": "easy", "p": "i-adjective"}, {"w": "面白い", "r": "おもしろい", "m": "interesting, funny", "p": "i-adjective"}, {"w": "つまらない", "r": "つまらない", "m": "boring", "p": "i-adjective"}, {"w": "楽しい", "r": "たのしい", "m": "fun, enjoyable", "p": "i-adjective"}, {"w": "忙しい", "r": "いそがしい", "m": "busy", "p": "i-adjective"}, {"w": "暇", "r": "ひま", "m": "free time, not busy", "p": "na-adjective"}, {"w": "暑い", "r": "あつい", "m": "hot (weather)", "p": "i-adjective"}, {"w": "寒い", "r": "さむい", "m": "cold (weather)", "p": "i-adjective"}, {"w": "熱い", "r": "あつい", "m": "hot (object)", "p": "i-adjective"}, {"w": "冷たい", "r": "つめたい", "m": "cold (object)", "p": "i-adjective"}, {"w": "甘い", "r": "あまい", "m": "sweet", "p": "i-adjective"}, {"w": "辛い", "r": "からい", "m": "spicy, hot", "p": "i-adjective"}, {"w": "美味しい", "r": "おいしい", "m": "delicious, tasty", "p": "i-adjective"}, {"w": "まずい", "r": "まずい", "m": "bad tasting", "p": "i-adjective"}, {"w": "早い", "r": "はやい", "m": "early, fast", "p": "i-adjective"}, {"w": "遅い", "r": "おそい", "m": "slow, late", "p": "i-adjective"}, {"w": "多い", "r": "おおい", "m": "many, a lot", "p": "i-adjective"}, {"w": "少ない", "r": "すくない", "m": "few, little", "p": "i-adjective"}, {"w": "広い", "r": "ひろい", "m": "wide, spacious", "p": "i-adjective"}, {"w": "狭い", "r": "せまい", "m": "narrow, cramped", "p": "i-adjective"}, {"w": "近い", "r": "ちかい", "m": "near, close", "p": "i-adjective"}, {"w": "遠い", "r": "とおい", "m": "far, distant", "p": "i-adjective"}, {"w": "重い", "r": "おもい", "m": "heavy", "p": "i-adjective"}, {"w": "軽い", "r": "かるい", "m": "light (weight)", "p": "i-adjective"}, {"w": "強い", "r": "つよい", "m": "strong", "p": "i-adjective"}, {"w": "弱い", "r": "よわい", "m": "weak", "p": "i-adjective"}, {"w": "嬉しい", "r": "うれしい", "m": "happy, glad", "p": "i-adjective"}, {"w": "悲しい", "r": "かなしい", "m": "sad", "p": "i-adjective"}, {"w": "怖い", "r": "こわい", "m": "scary, frightening", "p": "i-adjective"}, {"w": "痛い", "r": "いたい", "m": "painful", "p": "i-adjective"}, {"w": "眠い", "r": "ねむい", "m": "sleepy", "p": "i-adjective"}, {"w": "欲しい", "r": "ほしい", "m": "wanted, desired", "p": "i-adjective"}, {"w": "経験", "r": "けいけん", "m": "experience", "p": "noun"}, {"w": "練習", "r": "れんしゅう", "m": "practice", "p": "noun"}, {"w": "試験", "r": "しけん", "m": "exam, test", "p": "noun"}, {"w": "授業", "r": "じゅぎょう", "m": "class, lesson", "p": "noun"}, {"w": "宿題", "r": "しゅくだい", "m": "homework", "p": "noun"}, {"w": "質問", "r": "しつもん", "m": "question", "p": "noun"}, {"w": "答え", "r": "こたえ", "m": "answer", "p": "noun"}, {"w": "意味", "r": "いみ", "m": "meaning", "p": "noun"}, {"w": "理由", "r": "りゆう", "m": "reason", "p": "noun"}, {"w": "方法", "r": "ほうほう", "m": "method, way", "p": "noun"}, {"w": "場所", "r": "ばしょ", "m": "place, location", "p": "noun"}, {"w": "方向", "r": "ほうこう", "m": "direction", "p": "noun"}, {"w": "地図", "r": "ちず", "m": "map", "p": "noun"}, {"w": "住所", "r": "じゅうしょ", "m": "address", "p": "noun"}, {"w": "連絡", "r": "れんらく", "m": "contact, communication", "p": "noun"}, {"w": "準備", "r": "じゅんび", "m": "preparation", "p": "noun"}, {"w": "計画", "r": "けいかく", "m": "plan", "p": "noun"}, {"w": "予約", "r": "よやく", "m": "reservation, booking", "p": "noun"}, {"w": "旅行", "r": "りょこう", "m": "travel, trip", "p": "noun"}, {"w": "料理", "r": "りょうり", "m": "cooking, cuisine", "p": "noun"}, {"w": "生活", "r": "せいかつ", "m": "life, living", "p": "noun"}, {"w": "社会", "r": "しゃかい", "m": "society", "p": "noun"}, {"w": "文化", "r": "ぶんか", "m": "culture", "p": "noun"}, {"w": "歴史", "r": "れきし", "m": "history", "p": "noun"}, {"w": "科学", "r": "かがく", "m": "science", "p": "noun"}, {"w": "技術", "r": "ぎじゅつ", "m": "technology, skill", "p": "noun"}, {"w": "政治", "r": "せいじ", "m": "politics", "p": "noun"}, {"w": "経済", "r": "けいざい", "m": "economy", "p": "noun"}, {"w": "環境", "r": "かんきょう", "m": "environment", "p": "noun"}, {"w": "問題", "r": "もんだい", "m": "problem, issue", "p": "noun"}, {"w": "解決", "r": "かいけつ", "m": "solution, resolution", "p": "noun"}, {"w": "結果", "r": "けっか", "m": "result, outcome", "p": "noun"}, {"w": "原因", "r": "げんいん", "m": "cause, reason", "p": "noun"}, {"w": "影響", "r": "えいきょう", "m": "influence, effect", "p": "noun"}, {"w": "関係", "r": "かんけい", "m": "relationship", "p": "noun"}, {"w": "変化", "r": "へんか", "m": "change", "p": "noun"}, {"w": "発展", "r": "はってん", "m": "development, growth", "p": "noun"}, {"w": "覚える", "r": "おぼえる", "m": "to remember, to memorize", "p": "verb (ichidan)"}, {"w": "忘れる", "r": "わすれる", "m": "to forget", "p": "verb (ichidan)"}, {"w": "考える", "r": "かんがえる", "m": "to think, to consider", "p": "verb (ichidan)"}, {"w": "決める", "r": "きめる", "m": "to decide", "p": "verb (ichidan)"}, {"w": "選ぶ", "r": "えらぶ", "m": "to choose, to select", "p": "verb (godan)"}, {"w": "調べる", "r": "しらべる", "m": "to investigate, to look up", "p": "verb (ichidan)"}, {"w": "説明する", "r": "せつめいする", "m": "to explain", "p": "verb (suru)"}, {"w": "紹介する", "r": "しょうかいする", "m": "to introduce", "p": "verb (suru)"}, {"w": "確認する", "r": "かくにんする", "m": "to confirm", "p": "verb (suru)"}, {"w": "注意する", "r": "ちゅういする", "m": "to be careful, to warn", "p": "verb (suru)"}, {"w": "心配する", "r": "しんぱいする", "m": "to worry", "p": "verb (suru)"}, {"w": "努力する", "r": "どりょくする", "m": "to make effort", "p": "verb (suru)"}, {"w": "成功する", "r": "せいこうする", "m": "to succeed", "p": "verb (suru)"}, {"w": "失敗する", "r": "しっぱいする", "m": "to fail", "p": "verb (suru)"}, {"w": "続ける", "r": "つづける", "m": "to continue", "p": "verb (ichidan)"}, {"w": "止める", "r": "やめる", "m": "to stop, to quit", "p": "verb (ichidan)"}, {"w": "助ける", "r": "たすける", "m": "to help, to save", "p": "verb (ichidan)"}, {"w": "伝える", "r": "つたえる", "m": "to convey, to tell", "p": "verb (ichidan)"}, {"w": "渡す", "r": "わたす", "m": "to hand over, to pass", "p": "verb (godan)"}, {"w": "受ける", "r": "うける", "m": "to receive, to take (exam)", "p": "verb (ichidan)"}, {"w": "は", "r": "は", "m": "topic marker particle", "p": "particle"}, {"w": "が", "r": "が", "m": "subject marker particle", "p": "particle"}, {"w": "を", "r": "を", "m": "object marker particle", "p": "particle"}, {"w": "に", "r": "に", "m": "direction/time/location particle", "p": "particle"}, {"w": "で", "r": "で", "m": "location/means particle", "p": "particle"}, {"w": "と", "r": "と", "m": "and, with particle", "p": "particle"}, {"w": "も", "r": "も", "m": "also, too particle", "p": "particle"}, {"w": "の", "r": "の", "m": "possessive/nominalizer particle", "p": "particle"}, {"w": "から", "r": "から", "m": "from, because", "p": "particle"}, {"w": "まで", "r": "まで", "m": "until, up to", "p": "particle"}, {"w": "より", "r": "より", "m": "than, from", "p": "particle"}, {"w": "ので", "r": "ので", "m": "because, so", "p": "conjunction"}, {"w": "けど", "r": "けど", "m": "but, however (casual)", "p": "conjunction"}, {"w": "でも", "r": "でも", "m": "but, however", "p": "conjunction"}, {"w": "そして", "r": "そして", "m": "and, then", "p": "conjunction"}, {"w": "また", "r": "また", "m": "again, also", "p": "adverb"}, {"w": "もう", "r": "もう", "m": "already, soon", "p": "adverb"}, {"w": "まだ", "r": "まだ", "m": "still, not yet", "p": "adverb"}, {"w": "もっと", "r": "もっと", "m": "more", "p": "adverb"}, {"w": "ちょっと", "r": "ちょっと", "m": "a little, just a moment", "p": "adverb"}, {"w": "とても", "r": "とても", "m": "very, extremely", "p": "adverb"}, {"w": "全然", "r": "ぜんぜん", "m": "not at all (with negative)", "p": "adverb"}, {"w": "よく", "r": "よく", "m": "often, well", "p": "adverb"}, {"w": "たぶん", "r": "たぶん", "m": "probably, maybe", "p": "adverb"}, {"w": "絶対", "r": "ぜったい", "m": "absolutely, definitely", "p": "adverb"}, {"w": "本当に", "r": "ほんとうに", "m": "really, truly", "p": "adverb"}, {"w": "ありがとう", "r": "ありがとう", "m": "thank you", "p": "expression"}, {"w": "すみません", "r": "すみません", "m": "excuse me, I'm sorry", "p": "expression"}, {"w": "ごめんなさい", "r": "ごめんなさい", "m": "I'm sorry", "p": "expression"}, {"w": "はじめまして", "r": "はじめまして", "m": "nice to meet you", "p": "expression"}, {"w": "よろしくお願いします", "r": "よろしくおねがいします", "m": "please treat me well / I'm in your care", "p": "expression"}, {"w": "おはようございます", "r": "おはようございます", "m": "good morning", "p": "expression"}, {"w": "こんにちは", "r": "こんにちは", "m": "hello (daytime greeting)", "p": "expression"}, {"w": "こんばんは", "r": "こんばんは", "m": "good evening", "p": "expression"}, {"w": "おやすみなさい", "r": "おやすみなさい", "m": "good night", "p": "expression"}, {"w": "さようなら", "r": "さようなら", "m": "goodbye", "p": "expression"}, {"w": "いただきます", "r": "いただきます", "m": "said before eating", "p": "expression"}, {"w": "ごちそうさまでした", "r": "ごちそうさまでした", "m": "said after eating", "p": "expression"}, {"w": "大丈夫", "r": "だいじょうぶ", "m": "okay, all right", "p": "na-adjective"}, {"w": "なるほど", "r": "なるほど", "m": "I see, I understand", "p": "expression"}, {"w": "そうですね", "r": "そうですね", "m": "that's right, I agree", "p": "expression"}];
+
+function searchLocalDict(query) {
+  const q = query.trim();
+  const results = LOCAL_DICT.filter(e =>
+    e.w === q || e.r === q ||
+    e.w.includes(q) || e.r.includes(q) ||
+    e.m.toLowerCase().includes(q.toLowerCase())
+  );
+  return results.slice(0, 5);
+}
+
+// ── FURIGANA ──
+let furiganaEnabled = localStorage.getItem('hayai_furigana') === 'true';
+
+function toggleFurigana() {
+  furiganaEnabled = !furiganaEnabled;
+  localStorage.setItem('hayai_furigana', furiganaEnabled);
+  updateFuriganaUI();
+}
+
+function updateFuriganaUI() {
+  const knob = document.getElementById('furigana-knob');
+  const toggle = document.getElementById('furigana-toggle');
+  const label = document.getElementById('furigana-label');
+  if (!knob) return;
+  if (furiganaEnabled) {
+    knob.style.left = '23px';
+    knob.style.background = '#e8c468';
+    toggle.style.background = 'rgba(232,196,104,0.2)';
+    label.textContent = 'On';
+  } else {
+    knob.style.left = '3px';
+    knob.style.background = 'var(--text3)';
+    toggle.style.background = 'var(--bg3)';
+    label.textContent = 'Off';
+  }
+}
+
+function addFurigana(text) {
+  if (!furiganaEnabled) return text;
+  let result = text;
+  const matches = LOCAL_DICT.filter(e => e.w && e.r && text.includes(e.w) && e.w !== e.r);
+  matches.sort((a,b) => b.w.length - a.w.length);
+  matches.forEach(e => {
+    result = result.replace(new RegExp(e.w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
+      `<ruby>${e.w}<rt>${e.r}</rt></ruby>`);
+  });
+  return result;
+}
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+updateFuriganaUI();
+}
+</script>
+</body>
+</html>
